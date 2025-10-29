@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test SMS & WhatsApp Actions - Seven AI</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #0a0a0f;
+            color: #e0e0e0;
+        }
+        h1 { color: #ff7b00; }
+        .test-section {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #ff7b00;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #0a0a0f;
+            border: 1px solid #ff7b00;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        button {
+            background: #ff7b00;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #ff8c1a;
+        }
+        .result {
+            background: #16213e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #ff7b00;
+        }
+        .success { border-left-color: #10b981; }
+        .error { border-left-color: #ef4444; }
+        code {
+            background: #0a0a0f;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ff7b00;
+        }
+    </style>
+</head>
+<body>
+    <h1>📱 Test SMS & WhatsApp Actions</h1>
+    <p>Test the new messaging actions for Seven AI Assistant</p>
+
+    <!-- SMS Test -->
+    <div class="test-section">
+        <h2>🔔 Send SMS</h2>
+        <p>Opens your default SMS app with pre-filled message</p>
+        
+        <input type="tel" id="smsRecipient" placeholder="Phone number (e.g., +233500000000)" value="+233500000000">
+        <textarea id="smsMessage" rows="3" placeholder="Message content">Hello from Seven AI Assistant! This is a test SMS.</textarea>
+        
+        <button onclick="testSMS()">📱 Test SMS</button>
+        <button onclick="testSMSWithAction()">🧪 Test with ActionExecutor</button>
+        
+        <div id="smsResult"></div>
+    </div>
+
+    <!-- WhatsApp Test -->
+    <div class="test-section">
+        <h2>💬 Open WhatsApp</h2>
+        <p>Opens WhatsApp Web/App with specified contact</p>
+        
+        <input type="tel" id="whatsappPhone" placeholder="Phone number (e.g., +233500000000)" value="+233500000000">
+        <textarea id="whatsappMessage" rows="3" placeholder="Optional pre-filled message">Hey! Testing Seven AI WhatsApp integration 🎉</textarea>
+        
+        <button onclick="testWhatsApp()">💬 Test WhatsApp</button>
+        <button onclick="testWhatsAppWithAction()">🧪 Test with ActionExecutor</button>
+        
+        <div id="whatsappResult"></div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="test-section">
+        <h2>📝 How to Use</h2>
+        <ol>
+            <li>Enter a phone number (use your own for testing)</li>
+            <li>Type a message</li>
+            <li>Click test button</li>
+            <li>Your SMS/WhatsApp app should open</li>
+            <li>Review and send the message</li>
+        </ol>
+        
+        <h3>Phone Number Formats</h3>
+        <p>All these formats work:</p>
+        <ul>
+            <li><code>+233500000000</code> (international)</li>
+            <li><code>(555) 123-4567</code> (US format)</li>
+            <li><code>555-1234</code> (local)</li>
+            <li><code>+44 20 7946 0958</code> (UK format)</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test direct SMS URI
+        function testSMS() {
+            const recipient = document.getElementById('smsRecipient').value;
+            const message = document.getElementById('smsMessage').value;
+            
+            if (!recipient || !message) {
+                showResult('smsResult', 'Please fill in both phone number and message', 'error');
+                return;
+            }
+            
+            const cleanPhone = recipient.replace(/[\s\-\(\)]/g, '');
+            const smsURI = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+            
+            try {
+                window.open(smsURI, '_self');
+                showResult('smsResult', `✅ Opening SMS app to text ${cleanPhone}`, 'success');
+            } catch (error) {
+                showResult('smsResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test direct WhatsApp URL
+        function testWhatsApp() {
+            const phone = document.getElementById('whatsappPhone').value;
+            const message = document.getElementById('whatsappMessage').value;
+            
+            if (!phone) {
+                showResult('whatsappResult', 'Please enter a phone number', 'error');
+                return;
+            }
+            
+            const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').replace(/^\+/, '');
+            let whatsappURL = `https://wa.me/${cleanPhone}`;
+            
+            if (message) {
+                whatsappURL += `?text=${encodeURIComponent(message)}`;
+            }
+            
+            try {
+                window.open(whatsappURL, '_blank');
+                showResult('whatsappResult', `✅ Opening WhatsApp chat with ${cleanPhone}`, 'success');
+            } catch (error) {
+                showResult('whatsappResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test with ActionExecutor (simulated)
+        async function testSMSWithAction() {
+            const recipient = document.getElementById('smsRecipient').value;
+            const message = document.getElementById('smsMessage').value;
+            
+            if (!recipient || !message) {
+                showResult('smsResult', 'Please fill in both phone number and message', 'error');
+                return;
+            }
+            
+            const action = {
+                action: 'send_sms',
+                data: {
+                    recipient: recipient,
+                    message: message
+                }
+            };
+            
+            showResult('smsResult', `📤 Action JSON:\n${JSON.stringify(action, null, 2)}\n\n✅ SMS app will open...`, 'success');
+            
+            // Actually execute
+            setTimeout(() => testSMS(), 1000);
+        }
+        
+        async function testWhatsAppWithAction() {
+            const phone = document.getElementById('whatsappPhone').value;
+            const message = document.getElementById('whatsappMessage').value;
+            
+            if (!phone) {
+                showResult('whatsappResult', 'Please enter a phone number', 'error');
+                return;
+            }
+            
+            const action = {
+                action: 'open_whatsapp',
+                data: {
+                    phone: phone,
+                    message: message || undefined
+                }
+            };
+            
+            showResult('whatsappResult', `📤 Action JSON:\n${JSON.stringify(action, null, 2)}\n\n✅ WhatsApp will open...`, 'success');
+            
+            // Actually execute
+            setTimeout(() => testWhatsApp(), 1000);
+        }
+        
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.innerHTML = `<pre style="margin:0;white-space:pre-wrap;">${message}</pre>`;
+        }
+        
+        // Auto-populate with example data
+        window.onload = () => {
+            console.log('📱 SMS & WhatsApp Test Page Ready!');
+            console.log('Enter your phone number to test the actions.');
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,64 @@
+# Seven AI Backend Dependencies
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# HTTP & Environment
+requests==2.31.0
+python-dotenv==1.0.0
+httpx==0.26.0
+
+# Database
+aiosqlite==0.19.0
+
+# Data Validation (newer versions with pre-built Windows wheels)
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# Voice Recognition & Synthesis
+SpeechRecognition==3.10.1
+pyttsx3==2.90
+pyaudio==0.2.14
+
+# Messaging (Twilio)
+twilio==8.13.0
+
+# AI/ML
+openai==1.10.0  # For Groq API (OpenAI-compatible)
+
+# Computer Vision & Media Analysis
+pillow==10.2.0  # Image processing
+opencv-python==4.9.0.80  # Video and image analysis
+pytesseract==0.3.10  # OCR (text recognition)
+imagehash==4.3.1  # Image fingerprinting
+numpy==1.26.3  # Required by OpenCV
+
+# Emotional Intelligence & Sentiment Analysis
+transformers==4.36.0  # Sentiment analysis models
+torch==2.1.2  # PyTorch for transformers
+librosa==0.10.1  # Audio analysis (pitch, intensity)
+soundfile==0.12.1  # Audio file I/O
+
+# Multi-language Translation
+deep-translator==1.11.4  # Google Translate API wrapper
+langdetect==1.0.9  # Language detection
+
+# Confidence Scoring and Intent Detection (Optional - for better query understanding)
+sentence-transformers>=2.5.0  # Semantic similarity for intent classification
+
+# Knowledge Base / RAG System (Optional - for domain knowledge)
+faiss-cpu==1.12.0  # Vector similarity search (use faiss-gpu if GPU available)
+PyPDF2==3.0.1  # PDF text extraction
+
+# External Integrations (Optional - for Google Calendar, Gmail, etc.)
+google-auth==2.23.4  # Google authentication
+google-auth-oauthlib==1.1.0  # OAuth flow for Google services
+google-auth-httplib2==0.1.1  # HTTP library for Google Auth
+google-api-python-client==2.108.0  # Google API client
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
+

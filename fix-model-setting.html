@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Seven Model Settings</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        button {
+            background: #ff7b00;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            display: block;
+            width: 100%;
+        }
+        button:hover {
+            background: #ff9933;
+            transform: translateY(-2px);
+        }
+        .success {
+            background: rgba(72, 187, 120, 0.3);
+            border-left: 4px solid #48bb78;
+        }
+        .error {
+            background: rgba(245, 101, 101, 0.3);
+            border-left: 4px solid #f56565;
+        }
+        .info {
+            background: rgba(66, 153, 225, 0.3);
+            border-left: 4px solid #4299e1;
+        }
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Fix Seven Model Settings</h1>
+        <p>This tool will update your Seven AI settings to use the <strong>unlimited, faster model</strong>.</p>
+        
+        <div id="current-status" class="status info">
+            <strong>Current Settings:</strong><br>
+            <span id="current-info">Checking...</span>
+        </div>
+        
+        <button onclick="fixSettings()">✅ Switch to Unlimited Fast Model (llama-3.1-8b-instant)</button>
+        
+        <div id="result" style="display:none"></div>
+        
+        <div class="status info" style="margin-top: 30px;">
+            <strong>📊 Model Comparison:</strong><br><br>
+            <strong>❌ Current (llama-3.3-70b-versatile):</strong><br>
+            • Rate Limited: 100,000 tokens/day<br>
+            • Speed: Slower (70B parameters)<br>
+            • Status: Almost at limit (99,339/100,000 used)<br>
+            <br>
+            <strong>✅ Recommended (llama-3.1-8b-instant):</strong><br>
+            • Rate Limited: ♾️ UNLIMITED<br>
+            • Speed: 8x faster (8B parameters)<br>
+            • Status: Always available<br>
+        </div>
+    </div>
+
+    <script>
+        // Check current settings
+        function checkCurrentSettings() {
+            const provider = localStorage.getItem('seven_llm_provider') || 'not set';
+            const model = localStorage.getItem('seven_llm_model') || 'not set';
+            const apiKey = localStorage.getItem('seven_llm_api_key') ? '✅ Configured' : '❌ Not set';
+            
+            document.getElementById('current-info').innerHTML = `
+                <strong>Provider:</strong> <code>${provider}</code><br>
+                <strong>Model:</strong> <code>${model}</code><br>
+                <strong>API Key:</strong> ${apiKey}
+            `;
+        }
+        
+        function fixSettings() {
+            try {
+                // Update to unlimited model
+                localStorage.setItem('seven_llm_model', 'llama-3.1-8b-instant');
+                localStorage.setItem('seven_llm_provider', 'groq');
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'status success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>✅ Success! Settings Updated</strong><br><br>
+                    <strong>New Model:</strong> <code>llama-3.1-8b-instant</code><br>
+                    <strong>Benefits:</strong><br>
+                    • ♾️ Unlimited tokens (no daily limit)<br>
+                    • ⚡ Much faster responses<br>
+                    • 🎯 Same quality for most tasks<br><br>
+                    <strong>Next Step:</strong> Refresh Seven (http://localhost:5173) to apply changes!<br><br>
+                    <button onclick="window.close()">Close This Window</button>
+                    <button onclick="window.open('http://localhost:5173', '_blank')">Open Seven</button>
+                `;
+                
+                // Update current settings display
+                checkCurrentSettings();
+            } catch (error) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'status error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>❌ Error:</strong> ${error.message}<br>
+                    Try opening this file directly in the same browser where Seven is running.
+                `;
+            }
+        }
+        
+        // Check settings on load
+        checkCurrentSettings();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
