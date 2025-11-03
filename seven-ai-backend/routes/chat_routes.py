@@ -183,13 +183,15 @@ async def chat(request: ChatRequest):
     - Saves to memory
     """
     try:
-        # Create or get user
+        # Single user system - use hardcoded user ID
         if not request.user_id:
-            request.user_id = str(uuid.uuid4())
+            request.user_id = "seven_user"
+        
+        # Ensure user exists in database
+        try:
             memory_manager.create_user(request.user_id)
-        else:
-            # Ensure user exists
-            memory_manager.create_user(request.user_id)
+        except:
+            pass  # User may already exist
         
         # Create or get session
         if not request.session_id:
@@ -228,26 +230,11 @@ async def chat(request: ChatRequest):
         original_message = request.message  # Keep original for saving to memory
         
         # Translate message to English if needed (for LLM processing)
-        detected_language = user_language
-        if language_translator.is_available():
-            try:
-                # Auto-detect or use preferred language
-                detected_language = language_translator.detect_language(request.message)
-                
-                # If detected language differs from preference, update preference
-                if detected_language != user_language and detected_language != 'en':
-                    print(f"🌐 Detected language ({detected_language}) differs from preference ({user_language})")
-                    user_language = detected_language
-                
-                # Translate to English for LLM
-                if detected_language != 'en':
-                    user_content, detected_language = language_translator.translate_to_english(
-                        request.message,
-                        detected_language
-                    )
-                    print(f"🌐 Translated to English: {user_content[:100]}...")
-            except Exception as e:
-                print(f"⚠️ Translation failed: {e}")
+        # DISABLED: Force English-only responses unless user explicitly requests translation
+        detected_language = 'en'  # Always English for now
+        # Don't auto-detect or translate - force English for better consistency
+        user_language = 'en'  # Override to English
+        user_content = request.message  # Use original message without translation
         
         # Handle file attachments
         if request.files and len(request.files) > 0:
@@ -283,63 +270,64 @@ async def chat(request: ChatRequest):
             memory_manager.clear_conversation_context(request.session_id)
             print("🔄 User requested new topic")
         
-        # Analyze query confidence (detect ambiguous queries)
+        # Skip slow analysis features for faster responses - run in parallel or skip
+        # Analyze query confidence (detect ambiguous queries) - DISABLED for speed
         confidence_analysis = None
         clarifying_context = ""
-        if confidence_scorer.is_available():
-            try:
-                confidence_analysis = confidence_scorer.analyze_query(request.message)
-                print(f"🎯 Query confidence: {confidence_analysis['confidence']:.2f} (intent: {confidence_analysis['intent']})")
-                
-                if confidence_analysis['needs_clarification']:
-                    clarifying_question = confidence_scorer.generate_clarifying_question(
-                        request.message, 
-                        confidence_analysis
-                    )
-                    clarifying_context = f"CLARIFICATION NEEDED: The user's query is unclear (confidence: {confidence_analysis['confidence']:.2f}). Consider asking: '{clarifying_question}'"
-                    print(f"❓ Low confidence detected - suggesting clarification")
-            except Exception as e:
-                print(f"⚠️ Confidence analysis failed: {e}")
+        # if confidence_scorer.is_available():
+        #     try:
+        #         confidence_analysis = confidence_scorer.analyze_query(request.message)
+        #         print(f"🎯 Query confidence: {confidence_analysis['confidence']:.2f} (intent: {confidence_analysis['intent']})")
+        #         
+        #         if confidence_analysis['needs_clarification']:
+        #             clarifying_question = confidence_scorer.generate_clarifying_question(
+        #                 request.message, 
+        #                 confidence_analysis
+        #             )
+        #             clarifying_context = f"CLARIFICATION NEEDED: The user's query is unclear (confidence: {confidence_analysis['confidence']:.2f}). Consider asking: '{clarifying_question}'"
+        #             print(f"❓ Low confidence detected - suggesting clarification")
+        #     except Exception as e:
+        #         print(f"⚠️ Confidence analysis failed: {e}")
         
-        # Detect emotion from user message
+        # Detect emotion from user message - DISABLED for speed
         emotion_data = None
         emotion_context_prompt = ""
-        if emotion_detector.is_available():
-            try:
-                emotion_data = emotion_detector.analyze_text(request.message)
-                emotion_context_prompt = emotion_detector.get_emotion_prompt(emotion_data)
-                print(f"😊 Detected emotion: {emotion_data.get('emotion', 'neutral')} (confidence: {emotion_data.get('confidence', 0)})")
-            except Exception as e:
-                print(f"⚠️ Emotion detection failed: {e}")
+        # if emotion_detector.is_available():
+        #     try:
+        #         emotion_data = emotion_detector.analyze_text(request.message)
+        #         emotion_context_prompt = emotion_detector.get_emotion_prompt(emotion_data)
+        #         print(f"😊 Detected emotion: {emotion_data.get('emotion', 'neutral')} (confidence: {emotion_data.get('confidence', 0)})")
+        #     except Exception as e:
+        #         print(f"⚠️ Emotion detection failed: {e}")
         
-        # Get conversation context summary for LLM
+        # Get conversation context summary for LLM (keep - fast)
         context_summary = session_context.get_context_summary()
         transition_prompt = session_context.get_transition_prompt()
         
-        # Query knowledge base for relevant information
+        # Query knowledge base for relevant information - DISABLED for speed
         knowledge_context = ""
         knowledge_results = []
-        if knowledge_base.is_available():
-            try:
-                knowledge_results = knowledge_base.query_knowledge(
-                    query=user_content,
-                    top_k=3,
-                    min_similarity=0.6
-                )
-                if knowledge_results:
-                    knowledge_context = knowledge_base.format_knowledge_context(knowledge_results)
-                    print(f"KNOWLEDGE: Retrieved {len(knowledge_results)} entries")
-            except Exception as e:
-                print(f"WARNING: Knowledge retrieval failed: {e}")
+        # if knowledge_base.is_available():
+        #     try:
+        #         knowledge_results = knowledge_base.query_knowledge(
+        #             query=user_content,
+        #             top_k=3,
+        #             min_similarity=0.6
+        #         )
+        #         if knowledge_results:
+        #             knowledge_context = knowledge_base.format_knowledge_context(knowledge_results)
+        #             print(f"KNOWLEDGE: Retrieved {len(knowledge_results)} entries")
+        #     except Exception as e:
+        #         print(f"WARNING: Knowledge retrieval failed: {e}")
         
-        # Get user corrections and feedback context
+        # Get user corrections and feedback context - DISABLED for speed
         feedback_context = ""
-        try:
-            feedback_context = feedback_manager.get_correction_context(request.user_id)
-            if feedback_context:
-                print(f"FEEDBACK: Retrieved correction context for user")
-        except Exception as e:
-            print(f"WARNING: Feedback retrieval failed: {e}")
+        # try:
+        #     feedback_context = feedback_manager.get_correction_context(request.user_id)
+        #     if feedback_context:
+        #         print(f"FEEDBACK: Retrieved correction context for user")
+        # except Exception as e:
+        #     print(f"WARNING: Feedback retrieval failed: {e}")
         
         # Combine conversation context with transition hint, clarifying context, knowledge, and feedback
         conversation_context_text = context_summary
@@ -364,26 +352,19 @@ async def chat(request: ChatRequest):
             personality_prompt
         )
         
-        # Get LLM response
+        # Get LLM response with faster settings
         llm_response = await llm_client.chat(
             messages=llm_messages,
             provider=request.provider,
             temperature=0.7,
-            max_tokens=350  # Balanced: enough for complete responses, under rate limits
+            max_tokens=150  # Further reduced for faster responses
         )
         
         raw_message = llm_response["message"]
         
-        # Translate response back to user's language if needed
-        if language_translator.is_available() and user_language != 'en':
-            try:
-                raw_message = language_translator.translate_from_english(
-                    raw_message,
-                    user_language
-                )
-                print(f"🌐 Translated response to {user_language}")
-            except Exception as e:
-                print(f"⚠️ Response translation failed: {e}")
+        # DISABLED: Don't translate response - always respond in English
+        # Translation is disabled to ensure consistent English responses
+        # Users can explicitly request translation if needed
         
         # Parse JSON response
         try:
@@ -505,12 +486,15 @@ async def new_chat(request: NewChatRequest):
     Start a new chat session while keeping user memory
     """
     try:
-        # Create or get user
+        # Single user system - use hardcoded user ID
         if not request.user_id:
-            request.user_id = str(uuid.uuid4())
+            request.user_id = "seven_user"
         
-        # Ensure user exists
-        memory_manager.create_user(request.user_id)
+        # Ensure user exists in database
+        try:
+            memory_manager.create_user(request.user_id)
+        except:
+            pass  # User may already exist
         
         # Create new session
         session_id = memory_manager.create_chat_session(request.user_id)

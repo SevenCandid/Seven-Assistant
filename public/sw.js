@@ -38,9 +38,18 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first, then cache fallback
 self.addEventListener('fetch', (event) => {
-  // Skip caching for non-GET requests and backend API calls
-  if (event.request.method !== 'GET' || event.request.url.includes(':5000')) {
-    return event.respondWith(fetch(event.request));
+  // Detect backend API calls
+  const isBackendApi = event.request.url.includes(':5000') || 
+                       event.request.url.includes('/api/') ||
+                       event.request.url.includes('/health');
+  
+  // For backend API calls or non-GET requests, pass through to network
+  // without service worker interception to avoid error handling conflicts
+  if (event.request.method !== 'GET' || isBackendApi) {
+    // Pass through to network - don't cache or intercept
+    // Errors will be handled by the main app
+    event.respondWith(fetch(event.request));
+    return;
   }
 
   event.respondWith(

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle with glow effect -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00e6ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0066ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00e6ff;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Outer glow circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#bgGradient)" filter="url(#glow)" opacity="0.8"/>
+  
+  <!-- Main circle -->
+  <circle cx="50" cy="50" r="42" fill="url(#bgGradient)" stroke="#00ffff" stroke-width="2"/>
+  
+  <!-- Brain emoji or "7" -->
+  <!-- Option 1: Brain emoji representation -->
+  <text x="50" y="68" font-size="48" font-family="Arial, sans-serif" text-anchor="middle" fill="#ffffff" font-weight="bold">🧠</text>
+  
+  <!-- Option 2: "7" with futuristic styling (comment out brain to use) -->
+  <!--
+  <text x="50" y="70" font-size="50" font-family="Arial, sans-serif" text-anchor="middle" fill="#ffffff" font-weight="bold" filter="url(#glow)">7</text>
+  -->
+</svg>
+
+
+

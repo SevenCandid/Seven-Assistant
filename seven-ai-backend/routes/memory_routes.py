@@ -30,6 +30,22 @@ async def get_memory(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/memory")
+async def get_memory_default():
+    """Get default user's long-term memory (single user system)"""
+    try:
+        # Single user system - use hardcoded user ID
+        default_user_id = "seven_user"
+        memory = memory_manager.get_user_memory(default_user_id)
+        
+        return format_success_response({
+            "user_id": default_user_id,
+            "memory": memory
+        })
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/memory/update")
 async def update_memory(request: UpdateMemoryRequest):
     """Update user's long-term memory"""
@@ -62,6 +78,22 @@ async def clear_memory(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/memory")
+async def clear_memory_current():
+    """Clear current user's memory - single user system"""
+    try:
+        # Single user system - use hardcoded user ID
+        user_id = "seven_user"
+        memory_manager.clear_user_memory(user_id)
+        
+        return format_success_response({
+            "message": "Memory cleared successfully",
+            "user_id": user_id
+        })
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/session/{session_id}")
 async def delete_session(session_id: str):
     """Delete a chat session and its messages"""
@@ -75,6 +107,10 @@ async def delete_session(session_id: str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 
 
 

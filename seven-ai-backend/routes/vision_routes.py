@@ -248,3 +248,9 @@ async def tesseract_status():
 
 
 
+
+
+
+
+
+

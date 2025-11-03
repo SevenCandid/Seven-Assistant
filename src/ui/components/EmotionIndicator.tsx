@@ -213,3 +213,9 @@ export const EmotionBadge: React.FC<{ emotion?: EmotionData }> = ({ emotion }) =
 
 
 
+
+
+
+
+
+

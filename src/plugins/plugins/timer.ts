@@ -181,7 +181,7 @@ class TimerPlugin implements Plugin {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('⏰ Timer Complete!', {
           body: label,
-          icon: '/icon-192.png',
+          icon: '/seven_ico.png',
         });
       }
 
@@ -216,6 +216,12 @@ class TimerPlugin implements Plugin {
 }
 
 export default new TimerPlugin();
+
+
+
+
+
+
 
 
 

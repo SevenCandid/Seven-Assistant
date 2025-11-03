@@ -6,6 +6,8 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EmotionBadge } from './EmotionIndicator';
 import { FeedbackButtons } from './FeedbackButtons';
+import { ThinkingAnimation } from './ThinkingAnimation';
+import { ListeningWaveform } from './ListeningWaveform';
 import { backendApi } from '../../core/backendApi';
 
 interface FileAttachment {
@@ -44,6 +46,8 @@ interface Message {
 
 interface MessageListProps {
   messages: Message[];
+  isProcessing?: boolean;
+  isListening?: boolean;
 }
 
 /**
@@ -83,62 +87,63 @@ const formatTimestamp = (timestamp: Date): string => {
   }
 };
 
-export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+export const MessageList: React.FC<MessageListProps> = ({ messages, isProcessing = false, isListening = false }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or when thinking
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isProcessing]);
 
   if (messages.length === 0) {
+    // When listening starts, show only a large centered ListeningWaveform
+    if (isListening) {
+      return (
+        <div className="flex-1 flex items-center justify-center pt-10 sm:pt-11">
+          <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-64 md:h-64 lg:w-72 lg:h-72 flex items-center justify-center relative">
+            <ListeningWaveform isActive={true} />
+          </div>
+        </div>
+      );
+    }
+
+    // Normal empty state with text and small waveform
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
+      <div className="flex-1 flex items-end sm:items-center justify-center text-gray-400 p-4 pb-20 sm:pb-4 pt-10 sm:pt-11">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
           className="text-center max-w-md"
         >
-          <motion.div
-            animate={{
-              scale: [1, 1.05, 1],
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-3xl sm:text-4xl font-bold text-white glow-pulse"
-          >
-            7
-          </motion.div>
+          <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-28 md:h-28 mx-auto mb-2 sm:mb-4 md:mb-6 flex items-center justify-center relative">
+            <ListeningWaveform isActive={true} />
+          </div>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-lg sm:text-xl font-medium text-gray-300"
+            className="jarvis-text text-xs sm:text-lg md:text-xl font-medium px-2"
           >
-            Hey there! I'm Seven
+            INITIALIZING SEVEN AI...
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-xs sm:text-sm mt-2 text-gray-500"
+            className="text-[9px] sm:text-xs md:text-sm mt-1 sm:mt-2 text-cyan-400/70 font-mono px-2"
           >
-            Your intelligent AI assistant. Ask me anything!
+            System ready. How may I assist you today?
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-4 sm:mt-6 text-xs text-gray-600 space-y-1"
+            className="mt-2 sm:mt-4 md:mt-6 text-[9px] sm:text-xs text-gray-600 space-y-0.5 sm:space-y-1 px-2"
           >
             <p>💬 Type a message or click the mic</p>
             <p>🎤 Say "Seven" to wake me up</p>
-            <p>🔌 I have plugins: weather, reminder, calculator</p>
+            <p className="hidden sm:block">🔌 I have plugins: weather, reminder, calculator</p>
           </motion.div>
         </motion.div>
       </div>
@@ -146,7 +151,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
+    <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-6 space-y-2 sm:space-y-3 md:space-y-4 pt-10 sm:pt-11">
       <AnimatePresence>
         {messages.map((message, index) => (
           <motion.div
@@ -165,19 +170,26 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
             <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className={`max-w-[85%] sm:max-w-[75%] px-3 py-2 sm:px-5 sm:py-3 ${
+              className={`max-w-[92%] sm:max-w-[85%] md:max-w-[75%] px-2.5 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-lg shadow-lg relative overflow-hidden text-xs sm:text-sm md:text-base ${
                 message.role === 'user'
-                  ? 'message-user text-white'
-                  : 'message-assistant text-gray-200'
+                  ? 'glass bg-gradient-to-br from-cyan-500/20 to-blue-600/20 text-cyan-100 border border-cyan-400/30'
+                  : 'glass-dark bg-gradient-to-br from-slate-800/60 to-slate-900/60 text-gray-100 border border-cyan-500/20'
               }`}
+              style={{
+                boxShadow: message.role === 'user' 
+                  ? '0 0 20px rgba(0, 230, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  : '0 0 15px rgba(0, 230, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+              }}
             >
+              {/* Holographic shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               {/* Role indicator with emotion */}
-              <div className="flex items-center gap-2 mb-1 sm:mb-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-xs font-semibold opacity-80"
+                  className="text-[10px] sm:text-xs font-semibold opacity-80"
                 >
                   {message.role === 'user' ? '👤 You' : '🤖 Seven'}
                 </motion.span>
@@ -233,7 +245,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
 
               {/* Message content */}
               {message.content && (
-                <p className={`text-xs sm:text-sm whitespace-pre-wrap leading-relaxed font-medium ${
+                <p className={`text-xs sm:text-sm whitespace-pre-wrap leading-relaxed font-medium tracking-tight ${
                   message.role === 'user'
                     ? 'text-white'
                     : 'text-gray-900 dark:text-white'
@@ -245,7 +257,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.7 }}
                 transition={{ delay: 0.3 }}
-                className={`text-xs mt-1 sm:mt-2 font-medium ${
+                className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium ${
                   message.role === 'user'
                     ? 'text-gray-300'
                     : 'text-gray-700 dark:text-gray-400'
@@ -270,6 +282,71 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
           </motion.div>
         ))}
       </AnimatePresence>
+      
+      {/* Thinking Animation - Shows when SEVEN is processing */}
+      {isProcessing && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+          className="flex justify-start mt-2"
+        >
+          <div className="glass-dark px-4 py-3 rounded-lg border border-cyan-500/20 relative overflow-hidden"
+            style={{
+              boxShadow: '0 0 15px rgba(0, 230, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xs sm:text-sm text-cyan-400/80 font-mono tracking-wider">
+                THINKING
+              </span>
+              <div className="flex items-center gap-1.5">
+                <motion.div
+                  className="w-2 h-2 bg-cyan-400 rounded-full"
+                  animate={{
+                    y: [0, -8, 0],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0,
+                  }}
+                />
+                <motion.div
+                  className="w-2 h-2 bg-cyan-400 rounded-full"
+                  animate={{
+                    y: [0, -8, 0],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.2,
+                  }}
+                />
+                <motion.div
+                  className="w-2 h-2 bg-cyan-400 rounded-full"
+                  animate={{
+                    y: [0, -8, 0],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.4,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+      
       <div ref={messagesEndRef} />
     </div>
   );

@@ -61,11 +61,20 @@ export class BackendApiClient {
     try {
       const response = await fetch(`${this.baseUrl}/health`, {
         method: 'GET',
+        signal: AbortSignal.timeout(5000), // 5 second timeout
       });
+      if (!response.ok) {
+        return false;
+      }
       const data = await response.json();
       console.log('✅ Backend health check:', data);
-      return response.ok;
+      return true;
     } catch (error) {
+      // Only log if it's not a network error (expected when backend is offline)
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        // Backend is offline - this is expected, don't log error
+        return false;
+      }
       console.error('❌ Backend health check failed:', error);
       return false;
     }
@@ -75,44 +84,70 @@ export class BackendApiClient {
    * Send a chat message to the backend
    */
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
+    const requestStartTime = performance.now();
     try {
       console.log('📤 Sending message to backend:', {
         messageLength: request.message.length,
         hasFiles: !!request.files?.length,
         sessionId: request.session_id || 'new',
       });
+      console.log(`⏱️ [TIMING] Backend API request started at ${new Date().toISOString()}`);
 
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: request.message,
-          session_id: request.session_id || this.currentSessionId,
-          files: request.files,
-        }),
-      });
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout (2 minutes) - LLM responses can take time, especially with Ollama
+
+      try {
+        const fetchStartTime = performance.now();
+        const response = await fetch(`${this.baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: request.message,
+            session_id: request.session_id || this.currentSessionId,
+            files: request.files,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        
+        const fetchDuration = performance.now() - fetchStartTime;
+        console.log(`⏱️ [TIMING] Backend fetch took: ${fetchDuration.toFixed(2)}ms (${(fetchDuration / 1000).toFixed(2)}s)`);
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Backend error: ${response.status} - ${errorText}`);
       }
 
+      const parseStartTime = performance.now();
       const data: ChatResponse = await response.json();
+      const parseDuration = performance.now() - parseStartTime;
+      console.log(`⏱️ [TIMING] JSON parsing took: ${parseDuration.toFixed(2)}ms`);
       
       // Store session ID for future messages
       if (data.session_id) {
         this.currentSessionId = data.session_id;
       }
 
+      const totalDuration = performance.now() - requestStartTime;
+      console.log(`⏱️ [TIMING] Total backend API time: ${totalDuration.toFixed(2)}ms (${(totalDuration / 1000).toFixed(2)}s)`);
       console.log('📥 Received response from backend:', {
         messageLength: data.message.length,
         sessionId: data.session_id,
         hasActions: !!data.actions?.length,
       });
 
-      return data;
+        return data;
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout: Backend took too long to respond. Please try again.');
+        }
+        throw error;
+      }
     } catch (error) {
       console.error('❌ Failed to send message to backend:', error);
       throw error;
@@ -150,12 +185,30 @@ export class BackendApiClient {
   }
 
   /**
+   * Get recent Gmail emails (requires Gmail integration configured)
+   */
+  async getRecentEmails(maxResults: number = 1): Promise<{ emails: Array<{ id: string; from: string; subject: string; date: string; snippet: string }>; count: number }> {
+    const res = await fetch(`${this.baseUrl}/api/integrations/gmail/recent?max_results=${maxResults}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch emails: ${res.status}`);
+    }
+    const data = await res.json();
+    // Expected wrapper: { success, data: { emails, count }, error }
+    if (data && data.success && data.data) {
+      return { emails: data.data.emails || [], count: data.data.count || 0 };
+    }
+    // Fallback if backend returns raw
+    return { emails: data.emails || [], count: data.count || 0 };
+  }
+
+  /**
    * Get user memory (facts)
    */
   async getMemory(): Promise<MemoryItem[]> {
     try {
       console.log('📚 Fetching user memory...');
 
+      // Single user system - use default endpoint
       const response = await fetch(`${this.baseUrl}/api/memory`, {
         method: 'GET',
       });
@@ -165,8 +218,8 @@ export class BackendApiClient {
       }
 
       const data = await response.json();
-      console.log('✅ Retrieved memory:', data.facts?.length || 0, 'facts');
-      return data.facts || [];
+      console.log('✅ Retrieved memory:', data.memory?.facts?.length || 0, 'facts');
+      return data.memory?.facts || [];
     } catch (error) {
       console.error('❌ Failed to get memory:', error);
       throw error;
@@ -347,26 +400,27 @@ export class BackendApiClient {
   }
 
   /**
-   * Get or create user ID
-   * Uses localStorage to persist user ID across sessions
+   * Get user ID - Single user system
+   * Returns hardcoded single user ID for now
    */
   getUserId(): string {
-    const STORAGE_KEY = 'seven_user_id';
-    
-    // Try to get existing user ID
-    let userId = localStorage.getItem(STORAGE_KEY);
-    
-    // If no user ID exists, create one
-    if (!userId) {
-      userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      localStorage.setItem(STORAGE_KEY, userId);
-      console.log('🆔 Created new user ID:', userId);
-    }
-    
-    return userId;
+    // Single user system - hardcoded user ID
+    return 'seven_user';
   }
 }
 
 // Export singleton instance
-export const backendApi = new BackendApiClient();
+const _backendApi = new BackendApiClient();
+export const backendApi = _backendApi;
+// Make baseUrl accessible for DeveloperConsole
+Object.defineProperty(backendApi, 'baseUrl', {
+  get() {
+    return BACKEND_URL;
+  },
+  enumerable: true,
+  configurable: false,
+});
+
+
+
 

@@ -96,7 +96,7 @@ const plugin: Plugin = {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('⏰ Seven Reminder', {
             body: message,
-            icon: '/icon-192.png',
+            icon: '/seven_ico.png',
             tag: 'seven-reminder',
           });
         }
@@ -139,6 +139,12 @@ const plugin: Plugin = {
 };
 
 export default plugin;
+
+
+
+
+
+
 
 
 

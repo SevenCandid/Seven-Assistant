@@ -30,3 +30,9 @@ export const Waveform: React.FC<WaveformProps> = ({ isActive }) => {
 
 
 
+
+
+
+
+
+

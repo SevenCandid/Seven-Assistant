@@ -2,17 +2,73 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icon-192.png" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Favicon - Seven Icon -->
+    <!-- Note: For better visibility, consider editing seven_ico.png to add a white circular background -->
+    <link rel="icon" type="image/png" href="/seven_ico.png" />
+    <link rel="apple-touch-icon" href="/seven_ico.png" />
+    <!-- Create favicon with white circular background using canvas -->
+    <script>
+      // Create favicon with white circular background for better visibility
+      (function() {
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', createFavicon);
+        } else {
+          createFavicon();
+        }
+        
+        function createFavicon() {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            if (ctx) {
+              // Draw white circle background
+              ctx.beginPath();
+              ctx.arc(32, 32, 30, 0, 2 * Math.PI);
+              ctx.fillStyle = 'white';
+              ctx.fill();
+              
+              // Draw icon on top (with slight padding)
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(32, 32, 28, 0, 2 * Math.PI);
+              ctx.clip();
+              ctx.drawImage(img, 8, 8, 48, 48);
+              ctx.restore();
+              
+              // Update favicon
+              const existingLink = document.querySelector("link[rel='icon']");
+              if (existingLink) {
+                existingLink.href = canvas.toDataURL('image/png');
+              } else {
+                const link = document.createElement('link');
+                link.rel = 'icon';
+                link.href = canvas.toDataURL('image/png');
+                document.head.appendChild(link);
+              }
+            }
+          };
+          img.onerror = function() {
+            // Silently fail - use original favicon
+          };
+          img.src = '/seven_ico.png';
+        }
+      })();
+    </script>
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="Seven - AI assistant with voice control, memory, and action execution. Created by Seven." />
-    <meta name="theme-color" content="#f97316" />
+    <meta name="description" content="SEVEN — AI Assistant. Your intelligent AI assistant with voice control, memory, and action execution." />
+    <meta name="theme-color" content="#00e6ff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Seven" />
+    <meta name="apple-mobile-web-app-title" content="SEVEN" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Seven AI Assistant</title>
+    <title>SEVEN — AI Assistant</title>
   </head>
   <body>
     <div id="root"></div>

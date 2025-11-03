@@ -10,7 +10,7 @@ import uvicorn
 import os
 from dotenv import load_dotenv
 
-from routes import chat_routes, memory_routes, message_routes, vision_routes, emotion_routes, language_routes, personality_routes, knowledge_routes, feedback_routes, integration_routes
+from routes import chat_routes, memory_routes, message_routes, vision_routes, emotion_routes, language_routes, personality_routes, knowledge_routes, feedback_routes, integration_routes, dev_routes
 from core.memory import initialize_database
 
 # Load environment variables
@@ -62,6 +62,7 @@ app.include_router(personality_routes.router, prefix="/api", tags=["Personality"
 app.include_router(knowledge_routes.router, prefix="/api", tags=["Knowledge"])
 app.include_router(feedback_routes.router, prefix="/api", tags=["Feedback"])
 app.include_router(integration_routes.router, prefix="/api", tags=["Integrations"])
+app.include_router(dev_routes.router, prefix="/api", tags=["Developer"])
 
 @app.get("/")
 async def root():

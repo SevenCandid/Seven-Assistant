@@ -22,6 +22,7 @@ interface InputAreaProps {
   isProcessing: boolean;
   isSpeaking: boolean;
   onStopSpeaking?: () => void;
+  hasMessages?: boolean; // To determine if we're on a new chat page
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
@@ -32,6 +33,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   isProcessing,
   isSpeaking,
   onStopSpeaking,
+  hasMessages = true,
 }) => {
   const [inputText, setInputText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<FileAttachment[]>([]);
@@ -61,6 +63,21 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   const handleSend = () => {
     if ((inputText.trim() || attachedFiles.length > 0) && !isProcessing) {
+      // User interaction detected - this should unlock speech synthesis
+      // Try to "unlock" speech synthesis on send (browser autoplay policy)
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          // Silent test utterance to unlock speech synthesis
+          const unlockUtterance = new SpeechSynthesisUtterance('');
+          unlockUtterance.volume = 0;
+          window.speechSynthesis.speak(unlockUtterance);
+          window.speechSynthesis.cancel();
+          console.log('🔓 Speech synthesis unlocked via send button click');
+        } catch (e) {
+          console.warn('Could not unlock speech synthesis:', e);
+        }
+      }
+      
       onSendMessage(inputText, attachedFiles.length > 0 ? attachedFiles : undefined);
       setInputText('');
       setAttachedFiles([]);
@@ -205,16 +222,23 @@ export const InputArea: React.FC<InputAreaProps> = ({
   };
 
   return (
-    <div className="relative bg-transparent border-t border-white border-opacity-10 p-2">
-      {/* Listening Waveform Card - Glassmorphic with Blur */}
-      {isListening && (
+    <div className="relative bg-transparent p-2">
+      {/* Siri-style Listening Waveform - positioned just above input button */}
+      {/* Hide on new chat page when listening (handled by MessageList) */}
+      {/* Hide when speaking (speaking waveform is displayed separately) */}
+      {hasMessages && !isSpeaking && <ListeningWaveform isActive={isListening} />}
+      
+      {/* Listening Card (if needed for other UI) */}
+      {isListening && false && (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute bottom-full left-0 right-0 mb-3 glass-dark p-5 sm:p-7 mx-2 sm:mx-4 z-40 border-2 border-primary-500 shadow-glow-orange"
-          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+          className="absolute bottom-full left-0 right-0 mb-3 glass-dark p-5 sm:p-7 mx-2 sm:mx-4 z-40 border-2 border-cyan-500/50"
+          style={{
+            boxShadow: '0 0 30px rgba(0, 230, 255, 0.4), 0 0 60px rgba(0, 230, 255, 0.2)'
+          }}
         >
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-3">
@@ -226,10 +250,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
               >
                 🎤 Listening...
               </motion.p>
-            </div>
-            
-            <div className="flex justify-center my-4">
-              <ListeningWaveform isActive={true} />
             </div>
             
             <motion.p
@@ -252,36 +272,37 @@ export const InputArea: React.FC<InputAreaProps> = ({
         </motion.div>
       )}
 
-      {/* Speaking Indicator with Stop Button - Enhanced Glass */}
+      {/* Speaking Indicator - Use ListeningWaveform component */}
       {isSpeaking && !isListening && (
+        <div className="fixed bottom-20 sm:bottom-24 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none flex flex-col items-center">
+          <ListeningWaveform isActive={true} />
         <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
           transition={{ duration: 0.3 }}
-          className="fixed bottom-24 sm:bottom-28 left-1/2 transform -translate-x-1/2 glass-dark px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-center gap-3 z-40 max-w-xs sm:max-w-md border border-primary-500 border-opacity-30"
-          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-        >
-          <div className="flex items-center gap-2">
-            <div className="waveform">
-              <div className="wave-bar"></div>
-              <div className="wave-bar"></div>
-              <div className="wave-bar"></div>
-              <div className="wave-bar"></div>
-              <div className="wave-bar"></div>
-            </div>
-            <span className="text-xs sm:text-sm text-primary-400 whitespace-nowrap">🔊 Seven is speaking...</span>
-          </div>
+            className="mt-2 flex items-center gap-2.5 pointer-events-auto"
+          >
+            <span className="text-xs sm:text-sm text-cyan-400/90 font-mono tracking-wider">Speaking...</span>
               <motion.button
-                whileHover={{ scale: 1.08, boxShadow: '0 0 15px rgba(255, 123, 0, 0.4)' }}
-                whileTap={{ scale: 0.92 }}
-                onClick={onStopSpeaking || onStopListening}
-                className="neuro-button px-4 py-2 text-xs sm:text-sm text-primary-500 font-semibold hover:text-primary-400 transition-all duration-300"
+              whileHover={{ scale: 1.1, opacity: 0.8 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onStopSpeaking) {
+                  onStopSpeaking();
+                }
+              }}
+              className="text-cyan-400/60 hover:text-cyan-400 transition-colors p-1 touch-manipulation"
+              style={{ minWidth: '32px', minHeight: '32px' }}
                 title="Stop speaking"
               >
-                Stop
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h12v12H6z" />
+              </svg>
               </motion.button>
         </motion.div>
+        </div>
       )}
 
       {/* File Attachments Preview */}
@@ -347,8 +368,9 @@ export const InputArea: React.FC<InputAreaProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-20 left-4 glass-dark border-2 border-primary-500 border-opacity-50 overflow-hidden shadow-2xl"
+            className="fixed bottom-20 left-4 glass-dark border-2 border-cyan-500/50 overflow-hidden shadow-2xl"
             style={{ 
+              boxShadow: '0 0 30px rgba(0, 230, 255, 0.4)',
               backdropFilter: 'blur(20px)', 
               WebkitBackdropFilter: 'blur(20px)',
               minWidth: '200px',
@@ -399,11 +421,15 @@ export const InputArea: React.FC<InputAreaProps> = ({
           height: isFocused || attachedFiles.length > 0 || inputText ? 'auto' : '54px'
         }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
-        className="glass relative overflow-hidden"
+        className="glass-dark relative overflow-hidden mb-2 sm:mb-4 mx-auto max-w-[95vw] sm:max-w-[90vw] md:max-w-3xl px-1 sm:px-2 md:px-4"
         style={{
-          borderRadius: '27px', // Pill shape
+          borderRadius: '22px',
+          border: '1px solid rgba(0, 230, 255, 0.3)',
+          boxShadow: '0 0 30px rgba(0, 230, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
         }}
       >
+        {/* Animated scan line */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent"></div>
         <div className="flex items-end gap-2 p-1.5">
           {/* File Upload Button */}
           <div className="relative flex-shrink-0" ref={uploadMenuRef}>
@@ -435,7 +461,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 e.stopPropagation();
                 setShowUploadMenu(!showUploadMenu);
               }}
-              className="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+              className="w-10 h-10 flex items-center justify-center text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all jarvis-button"
               title="Upload files"
               style={{ borderRadius: '20px' }}
             >
@@ -464,39 +490,68 @@ export const InputArea: React.FC<InputAreaProps> = ({
           onKeyPress={handleKeyPress}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={attachedFiles.length > 0 ? "Add a message (optional)..." : "Ask Seven anything..."}
+            placeholder={attachedFiles.length > 0 ? "Add message..." : "Ask Seven..."}
           disabled={isProcessing || isListening}
-            className="flex-1 px-4 py-2.5 bg-transparent text-sm sm:text-base text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none resize-none transition-all"
-            rows={isFocused || inputText ? 3 : 1}
-            style={{ maxHeight: '120px', overflow: 'auto' }}
+            className="flex-1 px-2 sm:px-4 py-2 sm:py-2.5 bg-transparent text-xs sm:text-sm md:text-base text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 rounded-xl resize-none transition-all"
+            rows={isFocused || inputText ? 2 : 1}
+            style={{ maxHeight: '100px', overflow: 'auto' }}
         />
 
-          {/* Microphone Button */}
+          {/* Microphone Button - Glowing when listening */}
           <motion.button
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: isListening ? 1.05 : 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleVoiceToggle}
             disabled={isProcessing || isSpeaking}
-            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`relative flex-shrink-0 w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation ${
               isListening
-                ? 'bg-primary-500 text-white'
+                ? 'text-cyan-300'
                 : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
-            style={{ borderRadius: '20px' }}
+            style={{ 
+              borderRadius: '22px',
+              minWidth: '44px',
+              minHeight: '44px'
+            }}
             title={isListening ? 'Stop recording' : 'Start recording'}
+            aria-label={isListening ? 'Stop recording' : 'Start recording'}
           >
+            {/* Glowing ring when listening */}
+            {isListening && (
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                animate={{
+                  boxShadow: [
+                    '0 0 10px rgba(0, 230, 255, 0.5)',
+                    '0 0 20px rgba(0, 230, 255, 0.8), 0 0 30px rgba(0, 230, 255, 0.4)',
+                    '0 0 10px rgba(0, 230, 255, 0.5)',
+                  ],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                style={{
+                  background: 'radial-gradient(circle, rgba(0, 230, 255, 0.2), transparent)',
+                }}
+              />
+            )}
+            
             {isListening ? (
               <motion.svg
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-                className="w-6 h-6"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="relative z-10 w-5 h-5 sm:w-6 sm:h-6"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path d="M6 6h12v12H6z" />
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
               </motion.svg>
             ) : (
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="relative z-10 w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
                 <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
               </svg>
@@ -509,17 +564,18 @@ export const InputArea: React.FC<InputAreaProps> = ({
             whileTap={{ scale: 0.95 }}
             onClick={handleSend}
             disabled={(!inputText.trim() && attachedFiles.length === 0) || isProcessing || isListening}
-            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+            className={`flex-shrink-0 w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500/30 touch-manipulation ${
               (inputText.trim() || attachedFiles.length > 0) && !isProcessing && !isListening
-                ? 'text-primary-500 hover:text-primary-600'
+                ? 'text-cyan-500 hover:text-cyan-600'
                 : 'text-gray-400 dark:text-gray-600'
             }`}
-            style={{ borderRadius: '20px' }}
+            style={{ borderRadius: '22px', minWidth: '44px', minHeight: '44px' }}
             title="Send message"
+            aria-label="Send message"
           >
             <motion.svg
               whileHover={{ x: 2 }}
-              className="w-6 h-6"
+              className="w-5 h-5 sm:w-6 sm:h-6"
               fill="currentColor"
               viewBox="0 0 24 24"
             >

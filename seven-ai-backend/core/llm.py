@@ -38,13 +38,26 @@ class LLMClient:
                 models = data.get('models', [])
                 model_names = [m.get('name', '').split(':')[0] for m in models]
                 # Check if our model exists (with or without tag)
-                has_model = any(self.ollama_model in name for name in model_names)
-                if not has_model:
+                # Handle both 'llama3.2' and 'llama3.2:latest' formats
+                has_model = any(
+                    self.ollama_model == name or 
+                    self.ollama_model in name or 
+                    name in self.ollama_model 
+                    for name in model_names
+                )
+                if has_model:
+                    print(f"✅ Ollama is running with model '{self.ollama_model}'")
+                else:
                     print(f"⚠️ Ollama is running but model '{self.ollama_model}' not found")
                     print(f"💡 Available models: {model_names}")
+                    print(f"💡 You can install it with: ollama pull {self.ollama_model}")
                 return has_model
             return False
+        except requests.exceptions.ConnectionError:
+            # Ollama service is not running
+            return False
         except Exception as e:
+            print(f"⚠️ Ollama check failed: {str(e)}")
             return False
     
     async def chat(
@@ -69,27 +82,43 @@ class LLMClient:
             Dict with 'message', 'provider', 'model'
         """
         
-        # Auto-detect provider
+        original_provider = provider
+        auto_mode = (provider == "auto")
+        
+        # Auto-detect provider with smart fallback
         if provider == "auto":
-            if self.is_groq_available():
+            # Check both providers
+            groq_available = self.is_groq_available()
+            ollama_available = self.is_ollama_available()
+            
+            if groq_available:
                 provider = "groq"
                 print(f"✅ Using Groq with model: {self.groq_model}")
-            elif self.is_ollama_available():
+            elif ollama_available:
                 provider = "ollama"
-                print(f"✅ Using Ollama with model: {self.ollama_model}")
+                print(f"✅ Using Ollama with model: {self.ollama_model} (offline mode)")
             else:
                 error_msg = "No LLM provider available.\n"
                 if not self.groq_api_key:
                     error_msg += "❌ Groq: No API key found (add GROQ_API_KEY to .env)\n"
                 else:
                     error_msg += "❌ Groq: API key found but client failed to initialize\n"
-                error_msg += "❌ Ollama: Not available (install Ollama and run: ollama pull llama3.2)\n"
-                error_msg += "💡 Solution: Add Groq API key to seven-ai-backend/.env"
+                if not ollama_available:
+                    error_msg += "❌ Ollama: Not available (install Ollama and run: ollama pull llama3.2)\n"
+                error_msg += "💡 Solution: Either add Groq API key OR install Ollama for offline mode"
                 raise Exception(error_msg)
         
-        # Route to appropriate provider
+        # Route to appropriate provider with fallback
         if provider == "groq":
-            return await self._chat_groq(messages, temperature, max_tokens, stream)
+            try:
+                return await self._chat_groq(messages, temperature, max_tokens, stream, fallback_to_ollama=True)
+            except Exception as e:
+                # If Groq fails and we were in auto mode, try Ollama as fallback
+                if auto_mode and self.is_ollama_available():
+                    print(f"⚠️ Groq request failed: {str(e)}")
+                    print(f"🔄 Attempting fallback to Ollama...")
+                    return await self._chat_ollama(messages, temperature, max_tokens, stream)
+                raise
         elif provider == "ollama":
             return await self._chat_ollama(messages, temperature, max_tokens, stream)
         else:
@@ -100,17 +129,31 @@ class LLMClient:
         messages: List[Dict[str, str]],
         temperature: float,
         max_tokens: int,
-        stream: bool
+        stream: bool,
+        fallback_to_ollama: bool = True
     ) -> Dict:
-        """Chat with Groq API"""
+        """Chat with Groq API with timeout and automatic fallback to Ollama"""
         try:
-            response = self.groq_client.chat.completions.create(
-                model=self.groq_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=stream
-            )
+            import asyncio
+            import concurrent.futures
+            
+            # Run synchronous Groq API call in thread pool with timeout
+            def _make_request():
+                return self.groq_client.chat.completions.create(
+                    model=self.groq_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=stream,
+                    timeout=15.0  # 15 second timeout for Groq API (faster failover)
+                )
+            
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                response = await asyncio.wait_for(
+                    loop.run_in_executor(executor, _make_request),
+                    timeout=15.0  # 15 second timeout (faster failover)
+                )
             
             if stream:
                 # Handle streaming response
@@ -132,6 +175,19 @@ class LLMClient:
                     }
                 }
         except Exception as e:
+            error_msg = str(e).lower()
+            # Check if it's a network error or offline scenario
+            is_offline = any(keyword in error_msg for keyword in [
+                "connection", "timeout", "network", "unreachable", 
+                "refused", "failed to resolve", "offline"
+            ])
+            
+            # If Groq fails and Ollama is available, fallback automatically
+            if fallback_to_ollama and is_offline and self.is_ollama_available():
+                print(f"⚠️ Groq API error: {str(e)}")
+                print(f"🔄 Falling back to Ollama (offline mode)")
+                return await self._chat_ollama(messages, temperature, max_tokens, stream)
+            
             raise Exception(f"Groq API error: {str(e)}")
     
     async def _chat_ollama(
@@ -141,8 +197,10 @@ class LLMClient:
         max_tokens: int,
         stream: bool
     ) -> Dict:
-        """Chat with Ollama (local)"""
+        """Chat with Ollama (local) with timeout"""
         try:
+            import asyncio
+            import aiohttp
             url = f"{self.ollama_url}/api/chat"
             
             # Convert messages to Ollama format
@@ -156,6 +214,7 @@ class LLMClient:
                 }
             }
             
+            # Use longer timeout for Ollama (local processing can take time)
             response = requests.post(url, json=payload, timeout=60)
             
             if response.status_code != 200:
@@ -174,12 +233,22 @@ class LLMClient:
             else:
                 # Parse non-streaming response
                 result = response.json()
+                message_content = result.get("message", {}).get("content", "")
+                if not message_content:
+                    raise Exception("Ollama returned empty response")
                 return {
-                    "message": result.get("message", {}).get("content", ""),
+                    "message": message_content,
                     "provider": "ollama",
                     "model": self.ollama_model
                 }
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"Ollama service is not running. Start it with: ollama serve")
+        except requests.exceptions.Timeout:
+            raise Exception(f"Ollama request timed out. The model may be processing - try again.")
         except Exception as e:
+            error_msg = str(e)
+            if "Connection" in error_msg or "refused" in error_msg.lower():
+                raise Exception(f"Ollama service is not running. Start it with: ollama serve")
             raise Exception(f"Ollama error: {str(e)}")
     
     def get_status(self) -> Dict:

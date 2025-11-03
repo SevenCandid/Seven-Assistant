@@ -13,7 +13,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon-*.png', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['seven_logo.png', 'seven_ico.png'],
       manifest: {
         name: 'Seven AI Assistant',
         short_name: 'Seven',
@@ -26,21 +26,22 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: 'icon-512.png',
+            src: 'seven_logo.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'apple-touch-icon.png',
+            src: 'seven_ico.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'seven_ico.png',
             sizes: '180x180',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       },

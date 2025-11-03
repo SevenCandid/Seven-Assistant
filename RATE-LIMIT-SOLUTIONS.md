@@ -240,3 +240,9 @@ A: No! Your history is stored locally regardless of provider
 
 
 
+
+
+
+
+
+

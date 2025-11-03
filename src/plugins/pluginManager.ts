@@ -18,7 +18,7 @@ export class PluginManager {
   private async loadPlugins(): Promise<void> {
     try {
       // Dynamically import all plugins
-      const pluginModules = import.meta.glob('./plugins/*.ts');
+      const pluginModules = import.meta.glob('./plugins/plugins/*.ts');
       
       for (const path in pluginModules) {
         try {
@@ -169,6 +169,12 @@ export const getPluginManager = (): PluginManager => {
   }
   return pluginManagerInstance;
 };
+
+
+
+
+
+
 
 
 
