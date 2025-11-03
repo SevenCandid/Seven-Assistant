@@ -35,17 +35,19 @@ app = FastAPI(
 )
 
 # Configure CORS for frontend access
+# Get allowed origins from environment or use defaults (comma-separated)
+cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+
+if cors_origins_env == "*":
+    # Allow all origins
+    allow_origins = ["*"]
+else:
+    # Use specific origins from environment
+    allow_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "http://192.168.*.*:5173",  # Local network
-        "capacitor://localhost",  # Capacitor mobile
-        "ionic://localhost",
-        "*"  # Allow all for ngrok access
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -126,6 +128,9 @@ if __name__ == "__main__":
     # Get port from environment or default to 5000
     port = int(os.getenv("PORT", 5000))
     
+    # Disable reload in production (Railway/cloud environments)
+    reload = os.getenv("ENV", "development") == "development"
+    
     print(f"""
     ================================================
          SEVEN AI BACKEND STARTED
@@ -135,17 +140,15 @@ if __name__ == "__main__":
       
       API Docs: http://localhost:{port}/docs
       Health:   http://localhost:{port}/health
+      Environment: {os.getenv("ENV", "development")}
     ================================================
-    
-    To share globally with ngrok:
-       ngrok http {port}
     """)
     
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=True,
+        reload=reload,
         log_level="info"
     )
 
